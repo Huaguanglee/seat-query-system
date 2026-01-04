@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>座位查询系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 30px;
+            margin-top: 50px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        .input-group label {
+            display: block;
+            color: #555;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        
+        .input-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .scan-btn {
+            background: linear-gradient(to right, #667eea, #764ba2);
+            color: white;
+        }
+        
+        .search-btn {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .result-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            display: none;
+            border-left: 4px solid #667eea;
+        }
+        
+        .result-card h3 {
+            color: #333;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .info-label {
+            color: #666;
+            font-weight: bold;
+        }
+        
+        .info-value {
+            color: #333;
+            font-weight: 500;
+        }
+        
+        .no-result {
+            text-align: center;
+            color: #ff4757;
+            padding: 20px;
+            display: none;
+        }
+        
+        .tips {
+            background: #fff9c4;
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 20px;
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+        }
+        
+        .qr-hint {
+            text-align: center;
+            margin-top: 20px;
+            color: #fff;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏢 座位查询系统</h1>
+            <p>扫码或输入姓名查询座位信息</p>
+        </div>
+        
+        <div class="input-group">
+            <label for="nameInput">请输入姓名：</label>
+            <input 
+                type="text" 
+                id="nameInput" 
+                placeholder="如：张三"
+                onkeypress="if(event.key=='Enter') search()"
+            >
+        </div>
+        
+        <div class="button-group">
+            <button class="scan-btn" onclick="startScan()">
+                📷 扫一扫查询
+            </button>
+            <button class="search-btn" onclick="search()">
+                🔍 查询
+            </button>
+        </div>
+        
+        <!-- 查询结果显示区域 -->
+        <div id="resultCard" class="result-card">
+            <h3>📋 查询结果</h3>
+            <div class="info-item">
+                <span class="info-label">姓名：</span>
+                <span class="info-value" id="resultName">-</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">座位号：</span>
+                <span class="info-value" id="resultSeat">-</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">单位：</span>
+                <span class="info-value" id="resultUnit">-</span>
+            </div>
+        </div>
+        
+        <div id="noResult" class="no-result">
+            ❌ 未找到对应的座位信息
+        </div>
+        
+        <div class="tips">
+            💡 提示：您可以直接扫描二维码进入，在微信中长按识别二维码即可
+        </div>
+    </div>
+    
+    <div class="qr-hint">
+        微信扫描上方二维码访问本系统
+    </div>
+
+    <script>
+        // ===================== 这里是你的数据 =====================
+        // 将你在第一步转换的JSON数据粘贴到这里
+        const seatData = [
+            {
+                "姓名": "张三",
+                "座位号": "A01",
+                "单位": "技术部"
+            },
+            {
+                "姓名": "李四",
+                "座位号": "B02",
+                "单位": "市场部"
+            },
+            {
+                "姓名": "王五",
+                "座位号": "C03",
+                "单位": "销售部"
+            },
+            {
+                "姓名": "赵六",
+                "座位号": "D04",
+                "单位": "人事部"
+            }
+        ];
+        // ===================== 数据结束 =====================
+        
+        // 模拟微信扫码功能
+        function startScan() {
+            // 在浏览器中模拟扫码
+            const name = prompt("扫码模拟：请输入要查询的姓名（实际使用时是微信扫码）");
+            if (name) {
+                document.getElementById('nameInput').value = name;
+                search();
+            }
+        }
+        
+        // 查询功能
+        function search() {
+            const name = document.getElementById('nameInput').value.trim();
+            if (!name) {
+                alert("请输入要查询的姓名");
+                return;
+            }
+            
+            // 查找数据
+            const result = seatData.find(item => 
+                item.姓名 === name || 
+                item.姓名.includes(name) || 
+                name.includes(item.姓名)
+            );
+            
+            // 显示结果
+            if (result) {
+                document.getElementById('resultName').textContent = result.姓名;
+                document.getElementById('resultSeat').textContent = result.座位号;
+                document.getElementById('resultUnit').textContent = result.单位;
+                
+                document.getElementById('resultCard').style.display = 'block';
+                document.getElementById('noResult').style.display = 'none';
+            } else {
+                document.getElementById('resultCard').style.display = 'none';
+                document.getElementById('noResult').style.display = 'block';
+            }
+        }
+        
+        // 页面加载时检查URL参数
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const nameFromUrl = urlParams.get('name');
+            
+            if (nameFromUrl) {
+                document.getElementById('nameInput').value = nameFromUrl;
+                search();
+            }
+            
+            // 保存示例数据到本地存储
+            localStorage.setItem('seatData', JSON.stringify(seatData));
+        };
+    </script>
+</body>
+</html>
